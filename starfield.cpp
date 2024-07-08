@@ -1,5 +1,9 @@
 #include "starfield.h"
 
+//
+// random methods
+//
+
 int rnd_i(int min, int max)
 {
     using Dist = std::uniform_int_distribution<int>;
@@ -32,127 +36,46 @@ double rnd_d(float min, float max)
 void StarfieldEffect::run_effect()
 {
     star_holder.update_stars();
-    star_drawer.draw_stars(star_holder.get_stars_ref());
+    star_drawer.draw_stars(star_holder.get_stars_ref(), 100);
 }
 
 void StarfieldEffect::start_effect(int width, int height)
 {
     // initialize the metainfo
-    stars_info.init(width, height, 320, 240, 100);
+    stars_info.init(width, height);
     // initialize the working parts, give them references to metainfo
     star_drawer.init(&stars_info);
-    star_holder.init(&stars_info);
+    star_holder.init(&stars_info, 1000);
 }
 
 //
 // effect info methods
 //
 
-void EffectInfo::init(int width, int height, int cw, int ch, int cd)
+void EffectInfo::init(int width, int height)
 {
-    bound_w = width;
-    bound_h = height;
-
-    cam_dist = cd;
-    cam_width = cw;
-    cam_height = ch;
-    
-    ScreenPos midp = { (0.0f + width) / 2.0f, (0.0f + height) / 2.0f };
-}
-
-bool EffectInfo::check_in_bounds(ScreenPos star_pos)
-{
-    bool ret = true;
-
-    if(star_pos.x > bound_w || star_pos.x < 0)
-        ret = false;
-    
-    if(ret != false && (star_pos.y > bound_h || star_pos.y < 0))
-        ret = false;
-
-    return ret;
+    frame_w = width;
+    frame_h = height;
+    midp = { width / 2, height / 2 };
 }
 
 //
 // star holder methods
 //
 
-void Stars::init(EffectInfo *ref)
+void Stars::init(EffectInfo *ref, int num_stars)
 {
     inforef = ref;
-    new_star_batch(100);
-}
-
-void Stars::new_star_batch(int num_stars)
-{
-    int cd = inforef->get_cam_dist();
-    int cw = inforef->get_cam_w();
-    int ch = inforef-> get_cam_h();
-    int vw = inforef->get_w(); 
-    int vh = inforef->get_h();
 
     for(int i = num_stars; i > 0; --i)
     {
-        // spawn point, a random point between -1 and 1
-        Point sp = { rnd_d(0.55, 0.75), rnd_d(0.4, 0.6), rnd_d(-1, 1) };
+        // spawn point, a random xyz, -1 to 1
+        // except for z, since 0 is where the camera is
+        pWorld sp = { rnd_d(-1.0, 1.0), rnd_d(-1.0, 1.0), rnd_d(-1.0, 0.0000001) };
         // 'z' is the direction towards the camera
-        double z_velocity = rnd_d(0.09, 0.75);
+        double z_velocity = rnd_d(0.0009, 0.0075);
 
-        // first screen point
-        ScreenPos fsp = { ((((sp.x * cd) / sp.z) * cw) / vw), ((((sp.y * cd) / sp.z) * ch) / vh) };
-
-        int size;
-        Brightness b;
-
-        if(sp.z < -0.5)
-        {
-            size = 1;
-            b = Brightness::HALF;
-        }
-
-        if(sp.z > -0.5)
-        {
-            size = 2;
-            b = Brightness::HALF;
-        }
-
-        if(sp.z > -0.25)
-        {
-            size = 3;
-            b = Brightness::HALF;
-        }
-
-        if(sp.z > 0)
-        {
-            size = 5;
-            b = Brightness::HALF;
-        }
-        
-        if(sp.z > 0.25)
-        {
-            size = 8;
-            b = Brightness::FULL;
-        }
-
-        if(sp.z > 0.5)
-        {
-            size = 13;
-            b = Brightness::FULL;
-        }
-
-        if(sp.z > 0.75)
-        {
-            size = 21;
-            b = Brightness::FULL;
-        }
-
-        if(sp.z > 0.85)
-        {
-            size = 34;
-            b = Brightness::FULL;
-        }
-
-        stars.push_back(Star(sp, fsp, b, z_velocity, size));
+        stars.push_back(Star(sp, z_velocity));
     }
 }
 
@@ -160,22 +83,27 @@ void Stars::update_stars()
 {
     for(auto &s : stars)
     {
-
+        s.update();
     }
 }
 
-// 
+//
 // star methods
 //
 
-void Star::update(ScreenPos &midp)
+void Star::update()
 {
+    pos.z += z_vel;
 
+    if(pos.z >= 0)
+    {
+        reset();
+    }
 }
 
 void Star::reset()
 {
-
+    pos = { rnd_d(-1.0, 1.0), rnd_d(-1.0, 1.0), rnd_d(-1.0, 0.0000001) };
 }
 
 //
@@ -186,9 +114,9 @@ void DrawStars::init(EffectInfo *ref)
 {
     inforef = ref;
 
-    buf_pitch = inforef->get_w() * sizeof(uint32_t);
-    buf_stride = inforef->get_w();
-    buf_size = (inforef->get_w() * inforef->get_h());
+    buf_pitch = inforef->frame_w * sizeof(uint32_t);
+    buf_stride = inforef->frame_w;
+    buf_size = (inforef->frame_w * inforef->frame_h);
 
     for(int i = 0; i < buf_size; ++i)
     {
@@ -207,7 +135,7 @@ void DrawStars::change_pixel(int x, int y, uint32_t color)
     buffer[index] = color;
 }
 
-void DrawStars::draw_square(ScreenPos& pos, int lw, uint32_t color)
+void DrawStars::draw_square(pScreen pos, int lw, uint32_t color)
 {
     int targ_y = pos.y + lw;
     int targ_x = pos.x + lw;
@@ -221,15 +149,44 @@ void DrawStars::draw_square(ScreenPos& pos, int lw, uint32_t color)
     }
 }
 
-void DrawStars::draw_stars(std::vector<Star> &star_vec_ref)
+void DrawStars::draw_stars(std::vector<Star> star_vec_ref, int fov)
 {
-    for(auto &s : star_vec_ref)
-    {
-        ScreenPos sp = s.get_pos();
+    clear_buffer(inforef->palette[0]);
 
-        if(inforef->check_in_bounds(sp))
+    for(auto& s : star_vec_ref)
+    {
+        pScreen sp;
+        pWorld wp = s.get_pos();
+        double halfFOV = std::tan((fov * (M_PI / 180)) / 2);
+
+        Brightness b = OFF;
+
+        sp.x = ((wp.x / (wp.z * halfFOV)) * inforef->midp.x) + inforef->midp.x;
+        sp.y = ((wp.y / (wp.z * halfFOV)) * inforef->midp.y) + inforef->midp.y;
+        // sp.x = ((wp.x / wp.z) * inforef->midp.x) + inforef->midp.x;
+        // sp.y = ((wp.y / wp.z) * inforef->midp.y) + inforef->midp.y;
+
+        if(wp.z > -0.3)
         {
-            draw_square(sp, s.get_size(), inforef->palette[s.get_br()]);
+            b = FULL;
+        }
+        else if(wp.z > -0.6)
+        {
+            b = HALF;
+        }
+        else if(wp.z > -0.9)
+        {
+            b = DIM;
+        }
+
+        if(sp.x < 0 || sp.x >= inforef->frame_w ||
+            (sp.y < 0 || sp.y >= inforef->frame_h))
+        {
+            s.reset();
+        }
+        else 
+        {
+            draw_square(sp, 1, inforef->palette[b]);
         }
     }
 }
