@@ -1,7 +1,7 @@
 CXX = clang++
-LDFLAGS = -L/opt/homebrew/lib/
+LDFLAGS = $(shell pkg-config --libs sdl2)
 LDLIBS = -lSDL2
-CXXFLAGS = -Wall -std=c++17 -I/opt/homebrew/include/
+CXXFLAGS = -Wall -std=c++17 $(shell pkg-config --cflags sdl2)
 
 objects = main.o renderer.o userview.o env.o starfield.o
 
