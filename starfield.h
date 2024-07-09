@@ -9,10 +9,11 @@
 int rnd_i(int min, int max);
 double rnd_d(float min, float max);
 
-struct pWorld { double x; double y; double z; };
-struct pScreen { int x; int y; };
+struct pWorld { double x, y, z; };
+struct pScreen { int x, y; };
 enum Brightness { OFF, DIM, HALF, FULL };
 
+class StarfieldEffect;
 class Stars;
 class DrawStars;
 
@@ -31,25 +32,15 @@ public:
     pWorld get_pos() { return pos; };
 };
 
-class EffectInfo
-{
-public:
-    std::vector<uint32_t> palette = { 0x00000000, 0x00666666, 0x00A8A8A8, 0x00FFFFFF };
-    int frame_w, frame_h; 
-    pScreen midp;
-
-    void init(int width, int height);
-};
-
 class Stars
 {
     std::vector<Star> stars;
-    EffectInfo *inforef;
+    StarfieldEffect *inforef;
 
 public:
     Stars(){};
 
-    void init(EffectInfo *ref, int num_stars);
+    void init(StarfieldEffect *ref, int num_stars);
     void update_stars();
 
     std::vector<Star> &get_stars_ref() { return stars; };
@@ -59,7 +50,7 @@ class DrawStars
 {
     std::vector<uint32_t> buffer;
     int buf_pitch, buf_stride, buf_size;
-    EffectInfo *inforef;
+    StarfieldEffect *inforef;
 
     void change_pixel(int x, int y, uint32_t color);
     void draw_square(pScreen pos, int lw, uint32_t color);
@@ -68,7 +59,7 @@ class DrawStars
 public:
     DrawStars(){};
 
-    void init(EffectInfo *ref);
+    void init(StarfieldEffect *ref);
     void draw_stars(std::vector<Star> star_vec_ref, int fov);
 
     uint32_t *get_buf_data() { return buffer.data(); };
@@ -79,11 +70,14 @@ class StarfieldEffect
 {
     Stars star_holder;
     DrawStars star_drawer;
-    EffectInfo stars_info;
 
 public:
     StarfieldEffect(){};
     ~StarfieldEffect(){};
+
+    std::vector<uint32_t> palette = { 0x00000000, 0x00666666, 0x00A8A8A8, 0x00FFFFFF };
+    pScreen midp; 
+    int frame_w, frame_h;
 
     void start_effect(int width, int height);
     void run_effect();

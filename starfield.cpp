@@ -41,29 +41,21 @@ void StarfieldEffect::run_effect()
 
 void StarfieldEffect::start_effect(int width, int height)
 {
-    // initialize the metainfo
-    stars_info.init(width, height);
-    // initialize the working parts, give them references to metainfo
-    star_drawer.init(&stars_info);
-    star_holder.init(&stars_info, 1000);
-}
-
-//
-// effect info methods
-//
-
-void EffectInfo::init(int width, int height)
-{
+    // initialize meta stuff
+    midp = { width / 2, height / 2 };
     frame_w = width;
     frame_h = height;
-    midp = { width / 2, height / 2 };
+
+    // initialize the working parts, give references to their holder
+    star_drawer.init(this);
+    star_holder.init(this, 500);
 }
 
 //
 // star holder methods
 //
 
-void Stars::init(EffectInfo *ref, int num_stars)
+void Stars::init(StarfieldEffect *ref, int num_stars)
 {
     inforef = ref;
 
@@ -73,7 +65,7 @@ void Stars::init(EffectInfo *ref, int num_stars)
         // except for z, since 0 is where the camera is
         pWorld sp = { rnd_d(-1.0, 1.0), rnd_d(-1.0, 1.0), rnd_d(-1.0, 0.0000001) };
         // 'z' is the direction towards the camera
-        double z_velocity = rnd_d(0.0009, 0.0075);
+        double z_velocity = rnd_d(0.0003, 0.0066);
 
         stars.push_back(Star(sp, z_velocity));
     }
@@ -110,7 +102,7 @@ void Star::reset()
 // star drawer methods
 //
 
-void DrawStars::init(EffectInfo *ref)
+void DrawStars::init(StarfieldEffect *ref)
 {
     inforef = ref;
 
