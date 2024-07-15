@@ -149,7 +149,8 @@ void DrawStars::draw_stars(std::vector<Star> star_vec_ref, int fov)
     {
         pScreen sp;
         pWorld wp = s.get_pos();
-        double halfFOV = std::tan((fov * (M_PI / 180)) / 2);
+        // double halfFOV = std::tan((fov * (M_PI / 180)) / 2);
+        double halfFOV = std::atan((fov * (M_PI / 180)));
 
         Brightness b = OFF;
 
